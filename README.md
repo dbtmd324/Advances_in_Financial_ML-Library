@@ -1,4 +1,5 @@
 # Advances_in_Financial_ML-Library
-Library for studying mlfinlab & AFML and its exercise.
+## Library for studying mlfinlab & AFML and its exercise.
 
-Trying to make FFE(Financial Feature Engineering) library 
+- Now I'm trying to make FFE(Financial Feature Engineering) library.
+- AFML is one of the most valuable book for Financial ML.
