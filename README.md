@@ -5,3 +5,5 @@
 - AFML is one of the most valuable book for Financial ML.
 - It crucial to understand serial financial data.
 - Time to differentiate seasonality.
+
+AFML is the best textbook for financial machine learning.
