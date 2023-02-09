@@ -2,8 +2,7 @@
 CODE SNIPPET OF ADVANCES FINANCIAL MACHINE LEARNING
 """
 
-#### SNIPPET 3.1 ####
-
+#### SNIPPET 3.1 DAILY VOLATILITY ESTIMATES ####
 def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False):
     # 1. get target
     trgt = trgt.loc[tEvents]
@@ -22,8 +21,31 @@ def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False):
 
     return events
 
-#### SNIPPET 3.3 GETTING THE TIME OF FRIST TOUCH ####
+#### SNIPPET 3.2 TRIPLE-BARRIER LABELLING METHOD ####
+def applyPtSlOnT1(close, events, ptSl, molecule):
+	# apply stop loss/profit taking, if it takes place before t1 (end of event)
+	events_=events.loc[molecule]
+	out=events_[['t1']].copy(deep=True)
 
+	if ptSl[0]>0: 
+		pt=ptSl[0] * events_['trgt']
+	else:
+		pt=pd.Series(index=events.index) # NaNs
+	
+	if ptSl[1]>0:
+		sl=-ptSl[1] * event_['trgt']
+	else:
+		sl=pd.Series(index=events.index) # NaNs
+
+	for loc, t1 in events_['t1'].fillna(close.index[-1]).iteritems():
+		df0=close[loc:t1] # path prices
+		df0=(df0/close[loc] - 1) * events_.at[loc, 'side'] # path returns
+		out.loc[loc, 'sl']=df0[df0<sl[loc]].index.min() # earliest stop loss
+		out.loc[loc, 'pt']=df0[df0>pt[loc]].index.min() # earliest profit taking
+
+	return out
+
+#### SNIPPET 3.3 GETTING THE TIME OF FRIST TOUCH ####
 def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False):
     # 1. get target
     trgt = trgt.loc[tEvents]
@@ -42,11 +64,12 @@ def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False):
 
     return events
 ```
-
+#### SNIPPET 3.4: ADDING A VERTICAL BARRIER ####
 t1 = close.index.searchsorted(tEvents+pd.Timedelta(days=numDays))
 t1 = t1[t1<close.shape[0]]
 t1 = pd.Series(close.index[t1], index=tEvents[:t1.shape[0]]) # NaNs at end
 
+#### SNIPPET 3.5: LABELLING FOR SIDE AND SIZE ####
 def getBins(events, close):
     # 1. prices aligned with events
     events_ = events.dropna(subset=['t1'])
@@ -59,6 +82,7 @@ def getBins(events, close):
     
     return out
 
+#### SNIPPET 3.6: EXPANDING getEvents TO INCORPORATE META-LABELING ####
 def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False, side=None):
     # 1. get target
     trgt = trgt.loc[tEvents]
@@ -80,6 +104,7 @@ def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False, side=Non
     
     return events
 
+#### SNIPPET 3.7: EXPANDING getBins TO INCORPORATE META-LABELING ####
 def getBins(events, close):
     '''
     Compute event's outcome (including side information, if provided).
@@ -105,3 +130,43 @@ def getBins(events, close):
         out.loc[out['ret']<=0, 'bin'] = 0 # meta-labeling
     
     return out
+
+#### SNIPPET 3.8: DROPPING UNDER-POPULATED LABELS ####
+def dropLabels(events, minPct=.05):
+	# apply weights, drop labels with insufficient examples
+	while True:
+		df0 = events['bin'].value_counts(normalize=True)
+		if df0.min() > minPct or df0.shape[0] < 3:
+			break
+		print ('dropped label', df0.argmin(), df0.min())
+		events = events[events['bin'] != df0.argmin()]
+	return events
+
+#### SNIPPET 4.1: ESTIMATING THE UNIQUENESS OF A LABEL ####
+def mpNumCoEvents(closeIdx, t1, molecule):
+	'''
+	Compute the number of concurrent events per bar.
+	+molecule[0] is the date of the first event on which the weight will be computed
+	+molecule[-1] is the date of the last event on which the weight will be computed
+	'''
+
+#### SNIPPET 4.2: ESTIMATING THE AVERAGE UNIQUENESS OF A LABEL ####
+def mpSampleTW(t1, numCoEvents, molecule):
+	# Derive average uniqueness over the event's lifespan
+	wght = pd.Series(index=molecule)
+
+	for tIn, tOut in t1.loc[wght.index].iteritems():
+		wght.loc[tIn]=(1. / numCoEvents.loc[tIn:tOut]).mean()
+	
+	return wght
+
+#### SNIPPPET 4.3: BUILD AN INDICATOR MATRIX ####
+def getIndMatrix(barIx, t1):
+	# Get indicator matrix
+	indM = pd.DataFrame(0, index=barIx, columns=range(t1.shape[0]))
+	
+	for i, (t0, t1) in enumerate(t1.iteritems()):
+		indM.loc[t0:t1, i]=1
+
+	return indM
+
