@@ -2,6 +2,9 @@
 CODE SNIPPET OF ADVANCES FINANCIAL MACHINE LEARNING
 """
 
+import numpy as np
+import pandas as pd
+
 #### SNIPPET 3.1 DAILY VOLATILITY ESTIMATES ####
 def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False):
     # 1. get target
@@ -170,3 +173,33 @@ def getIndMatrix(barIx, t1):
 
 	return indM
 
+#### SNIPPET 4.4: COMPUTE AVERAGE UNIQUENESS ####
+def getAvgUniqueness(indM):
+	# Average uniqueness from indicator matrix
+    c = indM.sum(axis=1) # concurrency
+    u = indM.div(c, axis=0) # uniqueness
+    avgU = u[u>0].mean() # average uniqueness
+
+    return avgU
+
+#### SNIPPET 4.5: RETURN SAMPLE FROM SEQUENTIAL BOOTSTRAP ####
+def seqBootstrap(indM, sLength=None):
+    # Generate a sample via sequential bootstrap
+    if sLength is None:
+        sLength = indM.shape[1]
+    
+    phi = []
+
+    while len(phi) < sLength:
+        avgU = pd.Series()
+
+        for i in indM:
+            indM_ = indM[phi+[i]] # reduce indM
+            avgU.loc[i] = getAvgUniqueness(indM_).iloc[-1]
+
+        prob = avgU / avgU.sum() # draw prob
+        phi += [np.random.choice(indM.columns, p=prob)]
+
+    return phi
+        
+          
