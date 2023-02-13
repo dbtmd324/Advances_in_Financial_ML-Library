@@ -202,4 +202,68 @@ def seqBootstrap(indM, sLength=None):
 
     return phi
         
-          
+#### SNIPPET 4.6 EXAMPLE OF SEQUENTIAL BOOTSTRAP ####
+
+def main():
+	t1 = pd.Series([2, 3, 5], index=[0, 2, 4]) # t0, t1 for each feature observation
+	barIx = range(t1.max() + 1) # idnex or bars
+	indM = getIndMatrix(barIx, t1)
+	phi = np.random.choice(indM.columns, size=indM.shape[1])
+	
+	print(phi)
+	print('Standard uniqueness: ', getAvgUniqueness(indM[phi]).mean())
+
+	phi = seqBootstrap(indM)
+
+	print(phi)
+	print('Sequential uniqueness: ', getAvgUniqueness(indM[phi]).mean())
+
+	return
+
+#### SNIPPET 4.7: GENERATING A RANDOM T1 SERIES ####
+
+def getRndT1(numObs, numBars, maxH):
+    # random t1 Series
+    t1 = pd.Series()
+
+    for i in xrange(numObs):
+        ix = np.random.randint(0, numBars)
+        val = ix + np.random.randint(1, maxH)
+        t1.loc[ix] = val
+    
+    return t1.sort_index()
+
+#### SNIPPET 4.8: UNIQUENESS FROM STANDARD AND SEQUENTIAL BOOTSTRAP ALGORITHM ####
+
+def auxMC(numObs, numBars, maxH):
+    # Parallelized auxiliary function
+    t1 = getRndT1(numObs, numBars, maxH)
+    barIx = range(t1.max()+1)
+    indM = getIndMatrix(barIx, t1)
+    phi = np.random.choice(indM.columns, size=indM.shape[1])
+    stdU = getAvgUniqueness(indM[phi]).mean()
+    phi = seqBootstrap(indM)
+    seqU = getAvgUniqueness(indM[phi]).mean()
+    
+    return {'stdU': stdU, 'seqU': seqU}
+
+#### SNIPPET 4.9: MULTI-THREADED MONTE CARLO ####
+
+from mpEngine import processJobs, processJobs_
+
+def mainMC(numObs=10, numBars=100, maxH=5, numIter=1E6, numThreads=24):
+    # Monte Carlo experiments
+    jobs= []
+
+    for i in xrange(int(numIters)):
+        job = {'func': auxMC, 'numObs': numObs, 'numBars': numBars, 'maxH': maxH}
+        jobs.append(job)
+
+    if numThreads == 1:
+        out = processJobs_(jobs)
+    else:
+        out = processJobs(jobs, numThreads=numThreads)
+
+    print (pd.DataFrame(out).describe())
+
+    return
