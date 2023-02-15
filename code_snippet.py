@@ -283,5 +283,25 @@ def mpSampleW(t1, numCoEvents, close, molecule):
 out['w'] = mpPandasObj(mpSampleW, ('molecule', events.index), numThreads, t1 = events['t1'], numCoEvents = numCoEvents, close=close)
 out['w'] = out.shape[0] / out['w'].sum()
 
-        
+#### SNIPPET 4.11: IMPLEMENTATION OF TIME-DECAY FACTORS ####
 
+def getTimeDecay(tW, clfLastW=1):
+    # apply piecewise-linear decay to observed uniqueness (tW)
+    # newest observation gets weight=1, oldest observation gets weight=clfLastW
+    clfW = tW.sort_index().cumsum()
+
+    if clfLastW >= 0:
+        slope = (1. - clfLastW) / clfW.iloc[-1]
+    else:
+        slope = 1. / ((clfLastW+1) * clfW.iloc[-1])
+    const = 1. - slope * clfW.iloc[-1]
+    clfW = const + slope * clfW
+    clfW[clfW<0] = 0
+
+    print(const, slope)
+
+    return clfW
+
+#### SNIPPET 5.1: WEIGHTING FUNCTION ####
+def getWeights(d, size):
+     
