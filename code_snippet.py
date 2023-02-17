@@ -329,3 +329,17 @@ def plotWeights(dRange, nPlots, size):
 if __name__ == '__main__':
     plotWeights(dRange=[0,1], nPlots=11, size=6)
     plotWeights(dRange=[1,2], nPlots=11, size=6)
+
+#### SNIPPET 5.2: STANDARD FRACDIFF (EXPANDING WINDOW) ####
+
+def fracDiff(series, d, thres=0.01):
+    '''
+    Increasing width window, with treatment of NaNs
+    Note 1: For thres=1, noting is skipped.
+    Note 2: d can be any positive fractional, not necessarily bounded [0,1].
+    '''
+    # 1. Compute weights for the longest series
+    w = getWeights_FFD(d, thres)
+    # 2. Determine initial calcs to be skipped based on weight-loss threshold
+    # 3. Apply weights to values
+    
