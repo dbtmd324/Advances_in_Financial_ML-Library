@@ -339,7 +339,50 @@ def fracDiff(series, d, thres=0.01):
     Note 2: d can be any positive fractional, not necessarily bounded [0,1].
     '''
     # 1. Compute weights for the longest series
-    w = getWeights_FFD(d, thres)
+    w = getWeights_FFD(d, series.shape[0])
     # 2. Determine initial calcs to be skipped based on weight-loss threshold
+    w_ = np.cumsum(abs(w))
+    w_/= w_[-1]
+    skip = w_[w_>thres].shape[0]
     # 3. Apply weights to values
+    df = {}
+    for name in series.columns:
+        seriesF, df_ = series[[name]].fillna(method='ffill').dropna(), pd.Series()
+        for iloc in range(skip, seriesF.shape[0]):
+            loc = seriesF.index[iloc]
+            if not np.isfinite(series.loc[loc, name]):
+               continue # exclude NAs
+            df_[loc] = np.dot(w[-(iloc+1):, :].T, seriesF.loc[:loc])[0,0]
+        df[name] = df_.copy(deep=True)
+    df = pd.concat(df, axis=1)
+
+    return df 
+
+#### SNIPPET 5.3 THE NEW FIXED-WIDTH WINDOW FRACDIFF METHOD ####
+
+def fracDiff_FFD(Series, d, thres=1e-5):
+    '''
+    Constant width window(new solution)
+    Note 1: thres determines the cut-off weight for the window
+    Note 2: d can be positive fractional, not necessarily bounded [0,1].
+    '''
+    # 1. Compute weights for the longest series
+    w = getWeights_FFD(d, thres)
+    width = len(w) - 1
+    # 2. Apply weights to values
+    df = {}
+
+    for name in series.columns:
+        seriesF, df_ = series[[name]].fillna(method='ffill').dropna(), pd.Series()
+        for iloc1 in range(width, seriesF.shape[0]):
+            loc0, loc1 = seriesF.index[iloc1 - width], seriesF.index[iloc1]
+            if not np.isfinite(series.loc[loc1, name]):
+               continue # exclude NAs
+            df_[loc1] = np.dot(w.T, seriesF.loc[loc0:loc1])[0,0]
+        df[name] = df_.copy(deep=True)
+
+    df = pd.concat(df, axis=1)
+
+    return df
+    
     
