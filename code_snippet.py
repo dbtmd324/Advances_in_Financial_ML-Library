@@ -385,4 +385,58 @@ def fracDiff_FFD(Series, d, thres=1e-5):
 
     return df
     
-    
+#### SNIPPET 5.4 FINDING THE MINIMUM D VALUE THAT PASSES THE ADF TEST ####
+
+def plotMinFFD():
+	from statsmodels.tsa.stattools import adfuller
+	path, instName = './', 'ES1_Index_Method12'
+	out = pd.DataFrame(columns=['adfStat', 'pVal', 'lags', 'nObs', '95% conf', 'corr'])
+	df0 = pd.read_csv(path + instName + '.csv', index_col=0, parse_dates=True)
+	for d in np.linspace(0, 1, 11):
+		df1 = np.log(df0[['Close']]).resample('1D').last() # downcast to daily obs
+    df2 = fracDiff_FFD(df1, d, thres=0.01)
+    corr = np.corrcoef(df1.loc[df2.index, 'Close'], df2['Close'])[0, 1]
+		df2 = adfuller(df2['Close'], maxlag=1, regression='c', autolag=None)
+		out.loc[d] = list(df2[:4]) + [df2[4]['5%']] + [corr] # with critical value
+	out.to_csv(path + instName + '_testMinFFD.csv')
+	out[['adfStat', 'corr']].plot(secondary_y='adfStat')
+	mpl.axhline(out['95% conf'].mean(), linewidth=1, color='r', linestyle='dotted')
+	mpl.savefig(path+instName+'_testMinFFD.png')
+
+	return
+
+#### SNIPPET 6.1: ACCURACY OF THE BAGGING CLASSIFIER ####
+
+from scipy.misc import comb
+N, p, k = 100, 1.0/3, 3.0
+p_ = 0
+
+for i in xrange(0, int(N/k)+1):
+	p_ += comb(N, i) * p**i * (1-p)**(N-i)
+print p, 1-p
+
+#### SNIPPET 6.2: 3 WAYS OF SETTING UP AN RF ####
+
+clf0 = RandomForestClassifier(n_estimators=1000, class_weight='balanced_subsample', criterion='entropy')
+clf1 = RandomForestClassifier(criterion='entropy', max_features='auto', class_weight='balanced')
+clf1 = BaggingClassifier(base_estimator=clf1, n_estimators=1000, max_samples=avgU)
+clf2 = RandomForestClassifier(n_estimators=1, criterion='entropy', bootstrap=False, class_weight='balanced_subsample')
+clf2 = RandomForestClassifier(base_estimator=clf2, n_estimators=1000, max_samples=avgU, max_features=1)
+
+#### SNIPPET 7.1: PURGING OBSERVATION IN THE TRAINING SET ####
+
+def getTrainTimes(t1, testTimes):
+	'''
+	Given testTimes, find the times of the training observations.
+   - t1.index: Time when the observation started.
+   - t1.value: Time when the observation ended.
+   - testTimes: Times of testing observations.
+	'''
+	trn = t1.copy(deep=True)
+  for i,j in testTimes.iteritems():
+		df0 = trn[(i<=trn.index)&(trn.index<=j)].index # train starts within test
+		df1 = trn[(i<=trn)&(trn<=j)].index # train ends within test
+	  df2 = trn[(trn.index<=i)&(j<=trn)].index # train envelops test
+		trn = trn.drop(df0.union(df1).union(df2))
+
+	return trn
