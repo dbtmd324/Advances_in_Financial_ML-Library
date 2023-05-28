@@ -10,6 +10,7 @@ AFML(Advances in Financial Machine Learning) is the most impressive textbook for
 - This is one of bibles for making my FFE(Financial Feature Engineering) library.
 
 ### 2. Structure
+Motivation -> Stereotypes -> Alternatives -> Practices -> Exercises
 
 ### 3. Relationshipe between AFML and FFE
 It crucial to understand serial financial data.
